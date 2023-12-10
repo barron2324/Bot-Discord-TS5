@@ -13,6 +13,9 @@ export class LogEntry extends Document {
   action: string;
 
   @Prop()
+  serverName: string;
+
+  @Prop()
   timestamp: Date;
 }
 

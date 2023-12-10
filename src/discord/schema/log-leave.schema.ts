@@ -13,6 +13,9 @@ export class LogLeave extends Document {
   action: string;
 
   @Prop()
+  serverName: string;
+
+  @Prop()
   timestamp: Date;
 }
 

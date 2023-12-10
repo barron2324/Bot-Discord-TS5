@@ -96,12 +96,13 @@ export class DiscordService {
       const logEntry = new this.logEntryModel({
         ...entry,
         timestamp: dayjs(entry.timestamp).tz('Asia/Bangkok').toDate(),
+        serverName: newState.guild.name,
       });
   
       await logEntry.save();
       console.log('User join event saved to MongoDB:', logEntry);
   
-      const message = `User ${entry.username} joined the voice channel at ${logEntry.timestamp}`;
+      const message = `User ${entry.username} joined the voice channel at ${logEntry.timestamp} on server ${newState.guild.name}`;
       this.sendLogMessage(channelIds.channelenter, message);
   
       this.userTimeMap.set(entry.userId, { joinTime: entry.timestamp });
@@ -115,22 +116,22 @@ export class DiscordService {
       const logLeave = new this.logLeaveModel({
         ...entry,
         timestamp: dayjs(entry.timestamp).tz('Asia/Bangkok').toDate(),
+        serverName: oldState.guild.name,
       });
   
       await logLeave.save();
       console.log('User leave event saved to MongoDB:', logLeave);
   
-      const message = `User ${entry.username} left the voice channel at ${logLeave.timestamp}`;
+      const message = `User ${entry.username} left the voice channel at ${logLeave.timestamp} on server ${oldState.guild.name}`;
       this.sendLogMessage(channelIds.channelleave, message);
   
       this.handleUserTotalTime(oldState, entry);
-  
       this.userTimeMap.delete(entry.userId);
     } catch (error) {
       console.error('Error logging leave entry:', error.message);
     }
   }
-
+  
   private async handleUserTotalTime(oldState, entry) {
     try {
       if (this.userTimeMap.has(entry.userId)) {
@@ -145,15 +146,15 @@ export class DiscordService {
           this.totalTimes.set(entry.userId, duration.asMinutes());
         }
   
-        await this.saveTotalTime(entry.userId, entry.username, this.totalTimes.get(entry.userId));
+        await this.saveTotalTime(entry.userId, entry.username, this.totalTimes.get(entry.userId), oldState.guild.name);
         this.sendTotalTimeMessage(oldState, entry);
       }
     } catch (error) {
       console.error('Error handling user total time:', error.message);
     }
   }
-
-  private async saveTotalTime(userId: string, discordName: string, totalTime: number) {
+  
+  private async saveTotalTime(userId: string, discordName: string, totalTime: number, serverName: string) {
     try {
       const bangkokTime = dayjs().tz('Asia/Bangkok').format();
       const hours = Math.floor(totalTime / 60);
@@ -173,8 +174,9 @@ export class DiscordService {
           minutes: minutes.toString(),
           seconds: seconds.toString(),
         };
+        existingRecord.serverName = serverName;
         await existingRecord.save();
-        console.log(`Total time for User ${discordName} on ${bangkokTime} updated to ${hours} hours, ${minutes} minutes, ${seconds} seconds`);
+        console.log(`Total time for User ${discordName} on ${bangkokTime} on server ${serverName} updated to ${hours} hours, ${minutes} minutes, ${seconds} seconds`);
       } else {
         const totalTimeEntry = new this.userTotalTimeModel({
           discordName,
@@ -185,9 +187,10 @@ export class DiscordService {
             seconds: seconds.toString(),
           },
           createdAt: dayjs(bangkokTime).toDate(),
+          serverName,
         });
         await totalTimeEntry.save();
-        console.log(`Total time for User ${discordName} on ${bangkokTime} saved: ${hours} hours, ${minutes} minutes, ${seconds} seconds`);
+        console.log(`Total time for User ${discordName} on ${bangkokTime} on server ${serverName} saved: ${hours} hours, ${minutes} minutes, ${seconds} seconds`);
       }
     } catch (error) {
       console.error('Error saving total time entry:', error.message);

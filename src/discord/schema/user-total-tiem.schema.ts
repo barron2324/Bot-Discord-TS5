@@ -16,6 +16,9 @@ export class UserTotalTime extends Document {
   @Prop()
   discordId: string;
 
+  @Prop()
+  serverName: string;
+
   @Prop({ default: Date.now })
   createdAt: Date;
 }
